@@ -1,0 +1,4 @@
+language: dart
+script:
+  - pub get
+  - pub run test test/context_test.dart
