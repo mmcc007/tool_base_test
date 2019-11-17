@@ -9,6 +9,8 @@ environment:
 
 dependencies:
   tool_base: ^1.9.5
+#  tool_base:
+#    path: ../tool_base
 
 dev_dependencies:
   pedantic: ^1.7.0

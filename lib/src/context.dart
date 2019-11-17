@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:io' as io;
 
 import 'package:meta/meta.dart';
 import 'package:test/test.dart';
 import 'package:tool_base/tool_base.dart';
-
+import 'package:mockito/mockito.dart';
 import 'common.dart';
 import 'context_runner.dart';
 
@@ -20,9 +21,7 @@ void testUsingContext(
   Map<Type, Generator> overrides = const <Type, Generator>{},
   bool initializeFlutterRoot = true,
   String testOn,
-  bool
-      skip, // should default to `false`, but https://github.com/dart-lang/test/issues/545 doesn't allow this
-  Function runInAppContext,
+  bool skip, // should default to `false`, but https://github.com/dart-lang/test/issues/545 doesn't allow this
 }) {
   // Ensure we don't rely on the default [Config] constructor which will
   // leak a sticky $HOME/.flutter_settings behind!
@@ -34,80 +33,88 @@ void testUsingContext(
     }
   });
   Config buildConfig(FileSystem fs) {
-    configDir =
-        fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
-    final File settingsFile =
-        fs.file(fs.path.join(configDir.path, '.flutter_settings'));
+    configDir = fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
+    final File settingsFile = fs.file(
+      fs.path.join(configDir.path, '.flutter_settings')
+    );
     return Config(settingsFile);
   }
 
   test(description, () async {
-    if (runInAppContext == null) {
-      await runInContext<dynamic>(() {
-        return contextRun(buildConfig, overrides, testMethod);
-      });
-    } else {
-      print('running in app context');
-      await runInAppContext<dynamic>(() {
-        return contextRun(buildConfig, overrides, testMethod);
-      });
-    }
-  },
-      timeout: timeout ?? const Timeout(Duration(seconds: 60)),
-      testOn: testOn,
-      skip: skip);
-}
-
-contextRun(Config buildConfig(FileSystem fs), Map<Type, Generator> overrides,
-    testMethod()) async {
-  return context.run<dynamic>(
-    name: 'mocks',
-    overrides: <Type, Generator>{
-      Config: () => buildConfig(fs),
-      Logger: () => BufferLogger(),
-      OperatingSystemUtils: () => MockOperatingSystemUtils(),
-      OutputPreferences: () => OutputPreferences(showColor: false),
-//          ProcessManager: () => FakeProcessManager(),
-      FileSystem: () => LocalFileSystemBlockingSetCurrentDirectory(),
-      TimeoutConfiguration: () => const TimeoutConfiguration(),
-    },
-    body: () {
+    await runInContext<dynamic>(() {
+      return context.run<dynamic>(
+        name: 'mocks',
+        overrides: <Type, Generator>{
+          Config: () => buildConfig(fs),
+//          DeviceManager: () => FakeDeviceManager(),
+//          Doctor: () => FakeDoctor(),
+//          FlutterVersion: () => MockFlutterVersion(),
+          HttpClient: () => MockHttpClient(),
+//          IOSSimulatorUtils: () {
+//            final MockIOSSimulatorUtils mock = MockIOSSimulatorUtils();
+//            when(mock.getAttachedDevices()).thenAnswer((Invocation _) async => <IOSSimulator>[]);
+//            return mock;
+//          },
+          OutputPreferences: () => OutputPreferences(showColor: false),
+          Logger: () => BufferLogger(),
+          OperatingSystemUtils: () => FakeOperatingSystemUtils(),
+//          SimControl: () => MockSimControl(),
+//          Usage: () => FakeUsage(),
+//          XcodeProjectInterpreter: () => FakeXcodeProjectInterpreter(),
+          FileSystem: () => const LocalFileSystemBlockingSetCurrentDirectory(),
+          TimeoutConfiguration: () => const TimeoutConfiguration(),
+//          PlistParser: () => FakePlistParser(),
+        },
+        body: () {
 //          final String flutterRoot = getFlutterRoot();
-
-      return runZoned<Future<dynamic>>(() {
-        try {
-          return context.run<dynamic>(
-            // Apply the overrides to the test context in the zone since their
-            // instantiation may reference items already stored on the context.
-            overrides: overrides,
-            name: 'test-specific overrides',
-            body: () async {
-//                  if (initializeFlutterRoot) {
-//                    // Provide a sane default for the flutterRoot directory. Individual
-//                    // tests can override this either in the test or during setup.
+          return runZoned<Future<dynamic>>(() {
+            try {
+              return context.run<dynamic>(
+                // Apply the overrides to the test context in the zone since their
+                // instantiation may reference items already stored on the context.
+                overrides: overrides,
+                name: 'test-specific overrides',
+                body: () async {
+                  if (initializeFlutterRoot) {
+                    // Provide a sane default for the flutterRoot directory. Individual
+                    // tests can override this either in the test or during setup.
 //                    Cache.flutterRoot ??= flutterRoot;
-//                  }
-
-              return await testMethod();
-            },
-          );
-        } catch (error) {
-//              _printBufferedErrors(context);
-          rethrow;
-        }
-      }, onError: (dynamic error, StackTrace stackTrace) {
-        stdout.writeln(error);
-        stdout.writeln(stackTrace);
-//            _printBufferedErrors(context);
-        throw error;
-      });
-    },
-  );
+                  }
+                  return await testMethod();
+                },
+              );
+            } catch (error) {
+              _printBufferedErrors(context);
+              rethrow;
+            }
+          }, onError: (dynamic error, StackTrace stackTrace) {
+            io.stdout.writeln(error);
+            io.stdout.writeln(stackTrace);
+            _printBufferedErrors(context);
+            throw error;
+          });
+        },
+      );
+    });
+  }, timeout: timeout ?? const Timeout(Duration(seconds: 60)),
+      testOn: testOn, skip: skip);
 }
 
-class MockOperatingSystemUtils implements OperatingSystemUtils {
+void _printBufferedErrors(AppContext testContext) {
+  if (testContext.get<Logger>() is BufferLogger) {
+    final BufferLogger bufferLogger = testContext.get<Logger>();
+    if (bufferLogger.errorText.isNotEmpty)
+      print(bufferLogger.errorText);
+    bufferLogger.clear();
+  }
+}
+
+class FakeOperatingSystemUtils implements OperatingSystemUtils {
   @override
   ProcessResult makeExecutable(File file) => null;
+
+  @override
+  void chmod(FileSystemEntity entity, String mode) { }
 
   @override
   File which(String execName) => null;
@@ -119,16 +126,16 @@ class MockOperatingSystemUtils implements OperatingSystemUtils {
   File makePipe(String path) => null;
 
   @override
-  void zip(Directory data, File zipFile) {}
+  void zip(Directory data, File zipFile) { }
 
   @override
-  void unzip(File file, Directory targetDirectory) {}
+  void unzip(File file, Directory targetDirectory) { }
 
   @override
   bool verifyZip(File file) => true;
 
   @override
-  void unpack(File gzippedTarFile, Directory targetDirectory) {}
+  void unpack(File gzippedTarFile, Directory targetDirectory) { }
 
   @override
   bool verifyGzip(File gzippedFile) => true;
@@ -143,12 +150,16 @@ class MockOperatingSystemUtils implements OperatingSystemUtils {
   Future<int> findFreePort({bool ipv6 = false}) async => 12345;
 }
 
+class MockHttpClient extends Mock implements HttpClient {}
+
 class LocalFileSystemBlockingSetCurrentDirectory extends LocalFileSystem {
+  const LocalFileSystemBlockingSetCurrentDirectory();
+
   @override
   set currentDirectory(dynamic value) {
     throw 'fs.currentDirectory should not be set on the local file system during '
-        'tests as this can cause race conditions with concurrent tests. '
-        'Consider using a MemoryFileSystem for testing if possible or refactor '
-        'code to not require setting fs.currentDirectory.';
+          'tests as this can cause race conditions with concurrent tests. '
+          'Consider using a MemoryFileSystem for testing if possible or refactor '
+          'code to not require setting fs.currentDirectory.';
   }
 }

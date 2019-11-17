@@ -9,6 +9,8 @@ import 'package:tool_base/tool_base.dart';
 
 //import 'common_tools.dart' as common show isInstanceOf;
 
+/// Sanity test
+/// (taken from tool_base/test/base/context_test.dart)
 void main() {
   group('AppContext', () {
     group('global getter', () {
