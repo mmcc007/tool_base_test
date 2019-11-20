@@ -33,9 +33,9 @@ void testUsingContext(
     }
   });
   Config buildConfig(FileSystem fs) {
-    configDir = fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
+    configDir = fs.systemTempDirectory.createTempSync('config_dir_test.');
     final File settingsFile = fs.file(
-      fs.path.join(configDir.path, '.flutter_settings')
+      fs.path.join(configDir.path, '.settings')
     );
     return Config(settingsFile);
   }
