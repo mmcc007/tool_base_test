@@ -23,6 +23,7 @@ Future<T> runInContext<T>(
       Logger: () => platform.isWindows ? WindowsStdoutLogger() : StdoutLogger(),
       OperatingSystemUtils: () => OperatingSystemUtils(),
       ProcessManager: () => LocalProcessManager(),
+      SystemClock: () => const SystemClock(),
       Stdio: () => const Stdio(),
       TimeoutConfiguration: () => const TimeoutConfiguration(),
     },
