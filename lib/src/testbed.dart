@@ -8,26 +8,24 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file/memory.dart';
-import 'package:tool_base/tool_base.dart';
+import 'package:reporting/reporting.dart';
+import 'package:tool_base/src/base/context.dart';
+import 'package:tool_base/src/base/file_system.dart';
+import 'package:tool_base/src/base/io.dart';
+import 'package:tool_base/src/base/logger.dart';
+import 'package:tool_base/src/base/os.dart';
+import 'package:tool_base/src/base/platform.dart';
+import 'package:tool_base/src/base/terminal.dart';
+import 'package:tool_base/src/cache.dart';
+//import 'package:tool_base/src/context_runner.dart';
+//import 'package:tool_base/src/features.dart';
+//import 'package:tool_base/src/reporting/reporting.dart';
+//import 'package:tool_base/src/version.dart';
 
-import '../tool_base_test.dart';
+import 'context.dart';
 import 'context_runner.dart';
-//import 'package:flutter_tools/src/base/context.dart';
-//import 'package:flutter_tools/src/base/file_system.dart';
-//import 'package:flutter_tools/src/base/io.dart';
-//import 'package:flutter_tools/src/base/logger.dart';
-//import 'package:flutter_tools/src/base/os.dart';
-//import 'package:flutter_tools/src/base/platform.dart';
-//import 'package:flutter_tools/src/base/terminal.dart';
-//import 'package:flutter_tools/src/cache.dart';
-//import 'package:flutter_tools/src/context_runner.dart';
-//import 'package:flutter_tools/src/features.dart';
-//import 'package:flutter_tools/src/reporting/reporting.dart';
-//import 'package:flutter_tools/src/version.dart';
-//
-//import 'context.dart';
-//
-//export 'package:flutter_tools/src/base/context.dart' show Generator;
+
+export 'package:tool_base/src/base/context.dart' show Generator;
 
 // A default value should be provided if the vast majority of tests should use
 // this provider. For example, [BufferLogger], [MemoryFileSystem].
@@ -95,83 +93,83 @@ class Testbed {
       ...?overrides,
     };
     // Cache the original flutter root to restore after the test case.
-//    final String originalFlutterRoot = Cache.flutterRoot;
+    final String originalFlutterRoot = Cache.flutterRoot;
     // Track pending timers to verify that they were correctly cleaned up.
     final Map<Timer, StackTrace> timers = <Timer, StackTrace>{};
 
     return HttpOverrides.runZoned(() {
       return runInContext<T>(() {
         return context.run<T>(
-          name: 'testbed',
-          overrides: testOverrides,
-          zoneSpecification: ZoneSpecification(
-            createTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration duration, void Function() timer) {
-              final Timer result = parent.createTimer(zone, duration, timer);
-              timers[result] = StackTrace.current;
-              return result;
-            },
-            createPeriodicTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration period, void Function(Timer) timer) {
-              final Timer result = parent.createPeriodicTimer(zone, period, timer);
-              timers[result] = StackTrace.current;
-              return result;
-            }
-          ),
-          body: () async {
-//            Cache.flutterRoot = '';
-            if (_setup != null) {
-              await _setup();
-            }
-            await test();
-//            Cache.flutterRoot = originalFlutterRoot;
-            for (MapEntry<Timer, StackTrace> entry in timers.entries) {
-              if (entry.key.isActive) {
-                throw StateError('A Timer was active at the end of a test: ${entry.value}');
+            name: 'testbed',
+            overrides: testOverrides,
+            zoneSpecification: ZoneSpecification(
+                createTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration duration, void Function() timer) {
+                  final Timer result = parent.createTimer(zone, duration, timer);
+                  timers[result] = StackTrace.current;
+                  return result;
+                },
+                createPeriodicTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration period, void Function(Timer) timer) {
+                  final Timer result = parent.createPeriodicTimer(zone, period, timer);
+                  timers[result] = StackTrace.current;
+                  return result;
+                }
+            ),
+            body: () async {
+              Cache.flutterRoot = '';
+              if (_setup != null) {
+                await _setup();
               }
-            }
-            return null;
-          });
+              await test();
+              Cache.flutterRoot = originalFlutterRoot;
+              for (MapEntry<Timer, StackTrace> entry in timers.entries) {
+                if (entry.key.isActive) {
+                  throw StateError('A Timer was active at the end of a test: ${entry.value}');
+                }
+              }
+              return null;
+            });
       });
     }, createHttpClient: (SecurityContext c) => FakeHttpClient());
   }
 }
 
-///// A no-op implementation of [Usage] for testing.
-//class NoOpUsage implements Usage {
-//  @override
-//  bool enabled = false;
-//
-//  @override
-//  bool suppressAnalytics = true;
-//
-//  @override
-//  String get clientId => 'test';
-//
-//  @override
-//  Future<void> ensureAnalyticsSent() {
-//    return null;
-//  }
-//
-//  @override
-//  bool get isFirstRun => false;
-//
-//  @override
-//  Stream<Map<String, Object>> get onSend => const Stream<Object>.empty();
-//
-//  @override
-//  void printWelcome() {}
-//
-//  @override
-//  void sendCommand(String command, {Map<String, String> parameters}) {}
-//
-//  @override
-//  void sendEvent(String category, String parameter,{ Map<String, String> parameters }) {}
-//
-//  @override
-//  void sendException(dynamic exception) {}
-//
-//  @override
-//  void sendTiming(String category, String variableName, Duration duration, { String label }) {}
-//}
+/// A no-op implementation of [Usage] for testing.
+class NoOpUsage implements Usage {
+  @override
+  bool enabled = false;
+
+  @override
+  bool suppressAnalytics = true;
+
+  @override
+  String get clientId => 'test';
+
+  @override
+  Future<void> ensureAnalyticsSent() {
+    return null;
+  }
+
+  @override
+  bool get isFirstRun => false;
+
+  @override
+  Stream<Map<String, Object>> get onSend => const Stream<Object>.empty();
+
+  @override
+  void printWelcome() {}
+
+  @override
+  void sendCommand(String command, {Map<String, String> parameters}) {}
+
+  @override
+  void sendEvent(String category, String parameter,{ Map<String, String> parameters }) {}
+
+  @override
+  void sendException(dynamic exception) {}
+
+  @override
+  void sendTiming(String category, String variableName, Duration duration, { String label }) {}
+}
 
 class FakeHttpClient implements HttpClient {
   @override
@@ -204,7 +202,7 @@ class FakeHttpClient implements HttpClient {
   @override
   set authenticateProxy(
       Future<bool> Function(String host, int port, String scheme, String realm)
-          f) {}
+      f) {}
 
   @override
   set badCertificateCallback(
@@ -474,9 +472,9 @@ class FakeHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<Uint8List> firstWhere(
-    bool Function(Uint8List element) test, {
-    List<int> Function() orElse,
-  }) {
+      bool Function(Uint8List element) test, {
+        List<int> Function() orElse,
+      }) {
     return _delegate.firstWhere(test, orElse: orElse);
   }
 
@@ -492,9 +490,9 @@ class FakeHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<Uint8List> handleError(
-    Function onError, {
-    bool Function(dynamic error) test,
-  }) {
+      Function onError, {
+        bool Function(dynamic error) test,
+      }) {
     return _delegate.handleError(onError, test: test);
   }
 
@@ -514,9 +512,9 @@ class FakeHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<Uint8List> lastWhere(
-    bool Function(Uint8List element) test, {
-    List<int> Function() orElse,
-  }) {
+      bool Function(Uint8List element) test, {
+        List<int> Function() orElse,
+      }) {
     return _delegate.lastWhere(test, orElse: orElse);
   }
 
@@ -568,9 +566,9 @@ class FakeHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<Uint8List> timeout(
-    Duration timeLimit, {
-    void Function(EventSink<Uint8List> sink) onTimeout,
-  }) {
+      Duration timeLimit, {
+        void Function(EventSink<Uint8List> sink) onTimeout,
+      }) {
     return _delegate.timeout(timeLimit, onTimeout: onTimeout);
   }
 
@@ -698,7 +696,7 @@ class FakeHttpHeaders extends HttpHeaders {
 //    this.isWebEnabled = false,
 //    this.isWindowsEnabled = false,
 //    this.isPluginAsAarEnabled = false,
-//});
+//  });
 //
 //  @override
 //  final bool isLinuxEnabled;
