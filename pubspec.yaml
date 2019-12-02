@@ -8,9 +8,12 @@ environment:
   sdk: '>=2.4.0 <3.0.0'
 
 dependencies:
-  tool_base: ^1.9.5
+  tool_base: ^1.9.5+3
 #  tool_base:
 #    path: ../tool_base
+  reporting:
+    git: https://github.com/mmcc007/reporting.git
+#    path: ../reporting
 
 dev_dependencies:
   pedantic: ^1.7.0
