@@ -8,7 +8,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file/memory.dart';
-import 'package:reporting/reporting.dart';
 import 'package:tool_base/src/base/context.dart';
 import 'package:tool_base/src/base/file_system.dart';
 import 'package:tool_base/src/base/io.dart';
@@ -17,10 +16,6 @@ import 'package:tool_base/src/base/os.dart';
 import 'package:tool_base/src/base/platform.dart';
 import 'package:tool_base/src/base/terminal.dart';
 import 'package:tool_base/src/cache.dart';
-//import 'package:tool_base/src/context_runner.dart';
-//import 'package:tool_base/src/features.dart';
-//import 'package:tool_base/src/reporting/reporting.dart';
-//import 'package:tool_base/src/version.dart';
 
 import 'context.dart';
 import 'context_runner.dart';
@@ -42,7 +37,7 @@ final Map<Type, Generator> _testbedDefaults = <Type, Generator>{
 /// Manages interaction with the tool injection and runner system.
 ///
 /// The Testbed automatically injects reasonable defaults through the context
-/// DI system such as a [BufferLogger] and a [MemoryFileSytem].
+/// DI system such as a [BufferLogger] and a [MemoryFileSystem].
 ///
 /// Example:
 ///
@@ -73,19 +68,19 @@ class Testbed {
   /// `overrides` provides more overrides in addition to the test defaults.
   /// `setup` may be provided to apply mocks within the tool managed zone,
   /// including any specified overrides.
-  Testbed({FutureOr<void> Function() setup, Map<Type, Generator> overrides})
-      : _setup = setup,
+  Testbed({FutureOr<void> Function()? setup, Map<Type, Generator>? overrides})
+      : _setup =  setup,
         _overrides = overrides;
 
-  final FutureOr<void> Function() _setup;
-  final Map<Type, Generator> _overrides;
+  final FutureOr<void> Function()? _setup;
+  final Map<Type, Generator>? _overrides;
 
   /// Runs `test` within a tool zone.
   ///
   /// `overrides` may be used to provide new context values for the single test
   /// case or override any context values from the setup.
-  FutureOr<T> run<T>(FutureOr<T> Function() test, {Map<Type, Generator> overrides}) {
-    final Map<Type, Generator> testOverrides = <Type, Generator>{
+  FutureOr<T?> run<T>(FutureOr<T?> Function() test, {Map<Type, Generator>? overrides}) {
+    final testOverrides = <Type, Generator>{
       ..._testbedDefaults,
       // Add the initial setUp overrides
       ...?_overrides,
@@ -93,23 +88,23 @@ class Testbed {
       ...?overrides,
     };
     // Cache the original flutter root to restore after the test case.
-    final String originalFlutterRoot = Cache.flutterRoot;
+    final originalFlutterRoot = Cache.flutterRoot;
     // Track pending timers to verify that they were correctly cleaned up.
-    final Map<Timer, StackTrace> timers = <Timer, StackTrace>{};
+    final timers = <Timer, StackTrace>{};
 
     return HttpOverrides.runZoned(() {
-      return runInContext<T>(() {
-        return context.run<T>(
+      return runInContext(() {
+        return context.run(
             name: 'testbed',
             overrides: testOverrides,
             zoneSpecification: ZoneSpecification(
                 createTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration duration, void Function() timer) {
-                  final Timer result = parent.createTimer(zone, duration, timer);
+                  final result = parent.createTimer(zone, duration, timer);
                   timers[result] = StackTrace.current;
                   return result;
                 },
                 createPeriodicTimer: (Zone self, ZoneDelegate parent, Zone zone, Duration period, void Function(Timer) timer) {
-                  final Timer result = parent.createPeriodicTimer(zone, period, timer);
+                  final result = parent.createPeriodicTimer(zone, period, timer);
                   timers[result] = StackTrace.current;
                   return result;
                 }
@@ -117,11 +112,11 @@ class Testbed {
             body: () async {
               Cache.flutterRoot = '';
               if (_setup != null) {
-                await _setup();
+                await _setup!();
               }
               await test();
               Cache.flutterRoot = originalFlutterRoot;
-              for (MapEntry<Timer, StackTrace> entry in timers.entries) {
+              for (var entry in timers.entries) {
                 if (entry.key.isActive) {
                   throw StateError('A Timer was active at the end of a test: ${entry.value}');
                 }
@@ -129,10 +124,11 @@ class Testbed {
               return null;
             });
       });
-    }, createHttpClient: (SecurityContext c) => FakeHttpClient());
+    }, createHttpClient: (SecurityContext? c) => FakeHttpClient());
   }
 }
 
+/*
 /// A no-op implementation of [Usage] for testing.
 class NoOpUsage implements Usage {
   @override
@@ -170,22 +166,23 @@ class NoOpUsage implements Usage {
   @override
   void sendTiming(String category, String variableName, Duration duration, { String label }) {}
 }
+*/
 
 class FakeHttpClient implements HttpClient {
   @override
-  bool autoUncompress;
+  bool autoUncompress = true;
 
   @override
-  Duration connectionTimeout;
+  Duration? connectionTimeout;
 
   @override
-  Duration idleTimeout;
+  Duration idleTimeout = Duration(seconds: 0);
 
   @override
-  int maxConnectionsPerHost;
+  int? maxConnectionsPerHost;
 
   @override
-  String userAgent;
+  String? userAgent;
 
   @override
   void addCredentials(
@@ -197,16 +194,17 @@ class FakeHttpClient implements HttpClient {
 
   @override
   set authenticate(
-      Future<bool> Function(Uri url, String scheme, String realm) f) {}
+      Future<bool> Function(Uri url, String scheme, String? realm)? f) {}
 
   @override
   set authenticateProxy(
-      Future<bool> Function(String host, int port, String scheme, String realm)
-      f) {}
+      Future<bool> Function(
+              String host, int port, String scheme, String? realm)?
+          f) {}
 
   @override
   set badCertificateCallback(
-      bool Function(X509Certificate cert, String host, int port) callback) {}
+      bool Function(X509Certificate cert, String host, int port)? callback) {}
 
   @override
   void close({bool force = false}) {}
@@ -222,7 +220,7 @@ class FakeHttpClient implements HttpClient {
   }
 
   @override
-  set findProxy(String Function(Uri url) f) {}
+  set findProxy(String Function(Uri url)? f) {}
 
   @override
   Future<HttpClientRequest> get(String host, int port, String path) async {
@@ -245,7 +243,8 @@ class FakeHttpClient implements HttpClient {
   }
 
   @override
-  Future<HttpClientRequest> open(String method, String host, int port, String path) async {
+  Future<HttpClientRequest> open(
+      String method, String host, int port, String path) async {
     return FakeHttpClientRequest();
   }
 
@@ -289,28 +288,28 @@ class FakeHttpClientRequest implements HttpClientRequest {
   FakeHttpClientRequest();
 
   @override
-  bool bufferOutput;
+  bool bufferOutput = true;
 
   @override
-  int contentLength;
+  int contentLength = -1;
 
   @override
-  Encoding encoding;
+  late Encoding encoding;
 
   @override
-  bool followRedirects;
+  late bool followRedirects;
 
   @override
-  int maxRedirects;
+  late int maxRedirects;
 
   @override
-  bool persistentConnection;
+  bool persistentConnection = true;
 
   @override
   void add(List<int> data) {}
 
   @override
-  void addError(Object error, [StackTrace stackTrace]) {}
+  void addError(Object error, [StackTrace? stackTrace]) {}
 
   @override
   Future<void> addStream(Stream<List<int>> stream) async {}
@@ -321,13 +320,13 @@ class FakeHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  HttpConnectionInfo get connectionInfo => null;
+  HttpConnectionInfo? get connectionInfo => null;
 
   @override
   List<Cookie> get cookies => <Cookie>[];
 
   @override
-  Future<HttpClientResponse> get done => null;
+  Future<HttpClientResponse> get done => throw 'Fake';
 
   @override
   Future<void> flush() {
@@ -335,41 +334,41 @@ class FakeHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  HttpHeaders get headers => null;
+  HttpHeaders get headers => throw 'Fake';
 
   @override
-  String get method => null;
+  String get method => throw 'Fake';
 
   @override
-  Uri get uri => null;
+  Uri get uri => throw 'Fake';
 
   @override
-  void write(Object obj) {}
+  void write(Object? obj) {}
 
   @override
-  void writeAll(Iterable<Object> objects, [String separator = '']) {}
+  void writeAll(Iterable objects, [String separator = '']) {}
 
   @override
   void writeCharCode(int charCode) {}
 
   @override
-  void writeln([Object obj = '']) {}
+  void writeln([Object? obj]) {}
 
   @override
-  void abort([Object exception, StackTrace stackTrace]) {}
+  void abort([Object? exception, StackTrace? stackTrace]) {}
 }
 
 class FakeHttpClientResponse implements HttpClientResponse {
-  final Stream<Uint8List> _delegate = Stream<Uint8List>.fromIterable(const Iterable<Uint8List>.empty());
+  final Stream<List<int>> _delegate = Stream<Uint8List>.fromIterable(const Iterable<Uint8List>.empty());
 
   @override
   final HttpHeaders headers = FakeHttpHeaders();
 
   @override
-  X509Certificate get certificate => null;
+  X509Certificate get certificate => throw 'Not implemented';
 
   @override
-  HttpConnectionInfo get connectionInfo => null;
+  HttpConnectionInfo get connectionInfo => throw 'Not implemented';
 
   @override
   int get contentLength => 0;
@@ -380,7 +379,7 @@ class FakeHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  List<Cookie> get cookies => null;
+  List<Cookie> get cookies => throw 'Not implemented';
 
   @override
   Future<Socket> detachSocket() {
@@ -391,18 +390,20 @@ class FakeHttpClientResponse implements HttpClientResponse {
   bool get isRedirect => false;
 
   @override
-  StreamSubscription<Uint8List> listen(void Function(Uint8List event) onData, { Function onError, void Function() onDone, bool cancelOnError }) {
-    return const Stream<Uint8List>.empty().listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<Uint8List> listen(void Function(Uint8List event)? onData,
+      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+    return const Stream<Uint8List>.empty().listen(onData,
+        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 
   @override
-  bool get persistentConnection => null;
+  bool get persistentConnection => throw 'Not implemented';
 
   @override
-  String get reasonPhrase => null;
+  String get reasonPhrase => throw 'Not implemented';
 
   @override
-  Future<HttpClientResponse> redirect([ String method, Uri url, bool followLoops ]) {
+  Future<HttpClientResponse> redirect([ String? method, Uri? url, bool? followLoops ]) {
     return Future<HttpClientResponse>.error(UnsupportedError('Mocked response'));
   }
 
@@ -413,25 +414,24 @@ class FakeHttpClientResponse implements HttpClientResponse {
   int get statusCode => 400;
 
   @override
-  Future<bool> any(bool Function(Uint8List element) test) {
+  Future<bool> any(bool Function(List<int> element) test) {
     return _delegate.any(test);
   }
 
   @override
-  Stream<Uint8List> asBroadcastStream({
-    void Function(StreamSubscription<Uint8List> subscription) onListen,
-    void Function(StreamSubscription<Uint8List> subscription) onCancel,
-  }) {
+  Stream<List<int>> asBroadcastStream(
+      {void Function(StreamSubscription<List<int>> subscription)? onListen,
+        void Function(StreamSubscription<List<int>> subscription)? onCancel}) {
     return _delegate.asBroadcastStream(onListen: onListen, onCancel: onCancel);
   }
 
   @override
-  Stream<E> asyncExpand<E>(Stream<E> Function(Uint8List event) convert) {
+  Stream<E> asyncExpand<E>(Stream<E>? Function(List<int> event) convert) {
     return _delegate.asyncExpand<E>(convert);
   }
 
   @override
-  Stream<E> asyncMap<E>(FutureOr<E> Function(Uint8List event) convert) {
+  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) {
     return _delegate.asyncMap<E>(convert);
   }
 
@@ -441,60 +441,60 @@ class FakeHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Future<bool> contains(Object needle) {
+  Future<bool> contains(Object? needle) {
     return _delegate.contains(needle);
   }
 
   @override
-  Stream<Uint8List> distinct([bool Function(Uint8List previous, Uint8List next) equals]) {
+  Stream<List<int>> distinct([bool Function(List<int> previous, List<int> next)? equals]) {
     return _delegate.distinct(equals);
   }
 
   @override
-  Future<E> drain<E>([E futureValue]) {
+  Future<E> drain<E>([E? futureValue]) {
     return _delegate.drain<E>(futureValue);
   }
 
   @override
-  Future<Uint8List> elementAt(int index) {
+  Future<List<int>> elementAt(int index) {
     return _delegate.elementAt(index);
   }
 
   @override
-  Future<bool> every(bool Function(Uint8List element) test) {
+  Future<bool> every(bool Function(List<int> element) test) {
     return _delegate.every(test);
   }
 
   @override
-  Stream<S> expand<S>(Iterable<S> Function(Uint8List element) convert) {
+  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) {
     return _delegate.expand(convert);
   }
 
   @override
-  Future<Uint8List> get first => _delegate.first;
+  Future<List<int>> get first => _delegate.first;
 
   @override
-  Future<Uint8List> firstWhere(
-      bool Function(Uint8List element) test, {
-        List<int> Function() orElse,
+  Future<List<int>> firstWhere(
+      bool Function(List<int>) test, {
+        List<int> Function()? orElse,
       }) {
     return _delegate.firstWhere(test, orElse: orElse);
   }
 
   @override
-  Future<S> fold<S>(S initialValue, S Function(S previous, Uint8List element) combine) {
+  Future<S> fold<S>(S initialValue, S Function(S previous, List<int> element) combine) {
     return _delegate.fold<S>(initialValue, combine);
   }
 
   @override
-  Future<dynamic> forEach(void Function(Uint8List element) action) {
+  Future<dynamic> forEach(void Function(List<int> element) action) {
     return _delegate.forEach(action);
   }
 
   @override
-  Stream<Uint8List> handleError(
+  Stream<List<int>> handleError(
       Function onError, {
-        bool Function(dynamic error) test,
+        bool Function(dynamic error)? test,
       }) {
     return _delegate.handleError(onError, test: test);
   }
@@ -511,12 +511,12 @@ class FakeHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Future<Uint8List> get last => _delegate.last;
+  Future<List<int>> get last => _delegate.last;
 
   @override
-  Future<Uint8List> lastWhere(
-      bool Function(Uint8List element) test, {
-        List<int> Function() orElse,
+  Future<List<int>> lastWhere(
+      bool Function(List<int>) test, {
+        List<int> Function()? orElse,
       }) {
     return _delegate.lastWhere(test, orElse: orElse);
   }
@@ -525,63 +525,63 @@ class FakeHttpClientResponse implements HttpClientResponse {
   Future<int> get length => _delegate.length;
 
   @override
-  Stream<S> map<S>(S Function(Uint8List event) convert) {
+  Stream<S> map<S>(S Function(List<int> event) convert) {
     return _delegate.map<S>(convert);
   }
 
   @override
-  Future<dynamic> pipe(StreamConsumer<List<int>> streamConsumer) {
+  Future pipe(StreamConsumer<List<int>> streamConsumer) {
     return _delegate.pipe(streamConsumer);
   }
 
   @override
-  Future<Uint8List> reduce(List<int> Function(Uint8List previous, Uint8List element) combine) {
+  Future<List<int>> reduce(List<int> Function(List<int> previous, List<int> element) combine) {
     return _delegate.reduce(combine);
   }
 
   @override
-  Future<Uint8List> get single => _delegate.single;
+  Future<List<int>> get single => _delegate.single;
 
   @override
-  Future<Uint8List> singleWhere(bool Function(Uint8List element) test, {List<int> Function() orElse}) {
+  Future<List<int>> singleWhere(bool Function(List<int> element) test, {List<int> Function()? orElse}) {
     return _delegate.singleWhere(test, orElse: orElse);
   }
 
   @override
-  Stream<Uint8List> skip(int count) {
+  Stream<List<int>> skip(int count) {
     return _delegate.skip(count);
   }
 
   @override
-  Stream<Uint8List> skipWhile(bool Function(Uint8List element) test) {
+  Stream<List<int>> skipWhile(bool Function(List<int> element) test) {
     return _delegate.skipWhile(test);
   }
 
   @override
-  Stream<Uint8List> take(int count) {
+  Stream<List<int>> take(int count) {
     return _delegate.take(count);
   }
 
   @override
-  Stream<Uint8List> takeWhile(bool Function(Uint8List element) test) {
+  Stream<List<int>> takeWhile(bool Function(List<int> element) test) {
     return _delegate.takeWhile(test);
   }
 
   @override
-  Stream<Uint8List> timeout(
+  Stream<List<int>> timeout(
       Duration timeLimit, {
-        void Function(EventSink<Uint8List> sink) onTimeout,
+        void Function(EventSink<List<int>> sink)? onTimeout,
       }) {
     return _delegate.timeout(timeLimit, onTimeout: onTimeout);
   }
 
   @override
-  Future<List<Uint8List>> toList() {
+  Future<List<List<int>>> toList() {
     return _delegate.toList();
   }
 
   @override
-  Future<Set<Uint8List>> toSet() {
+  Future<Set<List<int>>> toSet() {
     return _delegate.toSet();
   }
 
@@ -591,7 +591,7 @@ class FakeHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Stream<Uint8List> where(bool Function(Uint8List event) test) {
+  Stream<List<int>> where(bool Function(List<int> event) test) {
     return _delegate.where(test);
   }
 }
@@ -623,7 +623,7 @@ class FakeHttpHeaders extends HttpHeaders {
   void set(String name, Object value, {bool preserveHeaderCase = false}) {}
 
   @override
-  String value(String name) => null;
+  String value(String name) => throw 'Not implemented';
 }
 
 //class FakeFlutterVersion implements FlutterVersion {
