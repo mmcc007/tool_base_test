@@ -14,7 +14,7 @@ import 'package:tool_base/tool_base.dart';
 void main() {
   group('AppContext', () {
     group('global getter', () {
-      bool called;
+      var called = false;
 
       setUp(() {
         called = false;
@@ -90,7 +90,7 @@ void main() {
           () async {
         final outer = Completer<void>();
         final inner = Completer<void>();
-        String value;
+        String? value;
         await context.run<void>(
           body: () {
             outer.future.then<void>((_) {
@@ -110,10 +110,10 @@ void main() {
 
       test('caches generated override values', () async {
         var consultationCount = 0;
-        String value;
+        String? value;
         await context.run<void>(
           body: () async {
-            final buf = StringBuffer(context.get<String>());
+            final buf = StringBuffer(context.get<String>()!);
             buf.write(context.get<String>());
             await context.run<void>(body: () {
               buf.write(context.get<String>());
@@ -133,10 +133,10 @@ void main() {
 
       test('caches generated fallback values', () async {
         var consultationCount = 0;
-        String value;
+        String? value;
         await context.run(
           body: () async {
-            final buf = StringBuffer(context.get<String>());
+            final buf = StringBuffer(context.get<String>()!);
             buf.write(context.get<String>());
             await context.run<void>(body: () {
               buf.write(context.get<String>());
@@ -156,7 +156,7 @@ void main() {
 
       test('returns null if generated value is null', () async {
         final value = await context.run<String>(
-          body: () => context.get<String>(),
+          body: () => context.get<String>()!,
           overrides: <Type, Generator>{
             String: () => null,
           },
@@ -166,13 +166,11 @@ void main() {
 
       test('throws if generator has dependency cycle', () async {
         final value = context.run<String>(
-          body: () async {
-            return context.get<String>();
-          },
+          body: () async => context.get<String>()!,
           fallbacks: <Type, Generator>{
-            int: () => int.parse(context.get<String>()),
+            int: () => int.parse(context.get<String>()!),
             String: () => '${context.get<double>()}',
-            double: () => context.get<int>() * 1.0,
+            double: () => context.get<int>()! * 1.0,
           },
         );
         try {
@@ -202,7 +200,7 @@ void main() {
       });
 
       group('fallbacks', () {
-        bool called;
+        var called = false;
 
         setUp(() {
           called = false;
@@ -210,17 +208,15 @@ void main() {
 
         test('are applied after parent context is consulted', () async {
           final value = await context.run<String>(
-            body: () {
-              return context.run<String>(
-                body: () {
-                  called = true;
-                  return context.get<String>();
-                },
-                fallbacks: <Type, Generator>{
-                  String: () => 'child',
-                },
-              );
-            },
+            body: () => context.run<String>(
+              body: () {
+                called = true;
+                return context.get<String>()!;
+              },
+              fallbacks: <Type, Generator>{
+                String: () => 'child',
+              },
+            ),
           );
           expect(called, isTrue);
           expect(value, 'child');
@@ -229,20 +225,18 @@ void main() {
         test('are not applied if parent context supplies value', () async {
           var childConsulted = false;
           final value = await context.run<String>(
-            body: () {
-              return context.run<String>(
-                body: () {
-                  called = true;
-                  return context.get<String>();
+            body: () => context.run<String>(
+              body: () {
+                called = true;
+                return context.get<String>()!;
+              },
+              fallbacks: <Type, Generator>{
+                String: () {
+                  childConsulted = true;
+                  return 'child';
                 },
-                fallbacks: <Type, Generator>{
-                  String: () {
-                    childConsulted = true;
-                    return 'child';
-                  },
-                },
-              );
-            },
+              },
+            ),
             fallbacks: <Type, Generator>{
               String: () => 'parent',
             },
@@ -254,9 +248,7 @@ void main() {
 
         test('may depend on one another', () async {
           final value = await context.run<String>(
-            body: () {
-              return context.get<String>();
-            },
+            body: () => context.get<String>()!,
             fallbacks: <Type, Generator>{
               int: () => 123,
               String: () => '-${context.get<int>()}-',
@@ -270,14 +262,12 @@ void main() {
         test('intercept consultation of parent context', () async {
           var parentConsulted = false;
           final value = await context.run<String>(
-            body: () {
-              return context.run<String>(
-                body: () => context.get<String>(),
+            body: () => context.run<String>(
+                body: () => context.get<String>()!,
                 overrides: <Type, Generator>{
                   String: () => 'child',
                 },
-              );
-            },
+              ),
             fallbacks: <Type, Generator>{
               String: () {
                 parentConsulted = true;

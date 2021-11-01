@@ -4,16 +4,15 @@
 
 import 'dart:async';
 
-//import 'package:args/command_runner.dart';
-import 'package:tool_base/src/base/common.dart';
-import 'package:tool_base/src/base/file_system.dart';
-import 'package:tool_base/src/base/platform.dart';
-import 'package:tool_base/src/base/process.dart';
 //import 'package:tool_base/src/commands/create.dart';
 //import 'package:tool_base/src/runner/flutter_command.dart';
 //import 'package:tool_base/src/runner/flutter_command_runner.dart';
 import 'package:test_api/test_api.dart' as test_package show TypeMatcher;
 import 'package:test_api/test_api.dart' hide TypeMatcher, isInstanceOf;
+//import 'package:args/command_runner.dart';
+import 'package:tool_base/src/base/common.dart';
+import 'package:tool_base/src/base/file_system.dart';
+import 'package:tool_base/src/base/process.dart';
 
 export 'package:test_core/test_core.dart' hide TypeMatcher, isInstanceOf; // Defines a 'package:test' shim.
 
@@ -34,17 +33,19 @@ void updateFileModificationTime(
     DateTime baseTime,
     int seconds,
     ) {
-  final DateTime modificationTime = baseTime.add(Duration(seconds: seconds));
+  final modificationTime = baseTime.add(Duration(seconds: seconds));
   fs.file(path).setLastModifiedSync(modificationTime);
 }
 
 /// Matcher for functions that throw [ToolExit].
 Matcher throwsToolExit({ int? exitCode, Pattern? message }) {
-  Matcher matcher = isToolExit;
-  if (exitCode != null)
+  var matcher = isToolExit;
+  if (exitCode != null) {
     matcher = allOf(matcher, (ToolExit e) => e.exitCode == exitCode);
-  if (message != null)
+  }
+  if (message != null) {
     matcher = allOf(matcher, (ToolExit e) => e.message.contains(message));
+  }
   return throwsA(matcher);
 }
 

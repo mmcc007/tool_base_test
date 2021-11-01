@@ -19,9 +19,9 @@ void main() {
   group('Testbed', () {
 
     test('Can provide default interfaces', () async {
-      final Testbed testbed = Testbed();
+      final testbed = Testbed();
 
-      FileSystem localFileSystem;
+      var localFileSystem = fs;
       await testbed.run(() {
         localFileSystem = fs;
       });
@@ -30,11 +30,11 @@ void main() {
     });
 
     test('Can provide setup interfaces', () async {
-      final Testbed testbed = Testbed(overrides: <Type, Generator>{
+      final testbed = Testbed(overrides: <Type, Generator>{
         A: () => A(),
       });
 
-      A instance;
+      A? instance;
       await testbed.run(() {
         instance = context.get<A>();
       });
@@ -43,11 +43,11 @@ void main() {
     });
 
     test('Can provide local overrides', () async {
-      final Testbed testbed = Testbed(overrides: <Type, Generator>{
+      final testbed = Testbed(overrides: <Type, Generator>{
         A: () => A(),
       });
 
-      A instance;
+      A? instance;
       await testbed.run(() {
         instance = context.get<A>();
       }, overrides: <Type, Generator>{
@@ -58,11 +58,11 @@ void main() {
     });
 
     test('provides a mocked http client', () async {
-      final Testbed testbed = Testbed();
+      final testbed = Testbed();
       await testbed.run(() async {
-        final HttpClient client = HttpClient();
-        final HttpClientRequest request = await client.getUrl(null);
-        final HttpClientResponse response = await request.close();
+        final client = HttpClient();
+        final request = await client.getUrl(Uri());
+        final response = await request.close();
 
         expect(response.statusCode, HttpStatus.badRequest);
         expect(response.contentLength, 0);
@@ -70,18 +70,18 @@ void main() {
     });
 
     test('Throws StateError if Timer is left pending', () async {
-      final Testbed testbed = Testbed();
+      final testbed = Testbed();
 
       expect(testbed.run(() async {
         Timer.periodic(const Duration(seconds: 1), (Timer timer) { });
       }), throwsA(isA<StateError>()));
     });
 
-    test('Doesnt throw a StateError if Timer is left cleaned up', () async {
-      final Testbed testbed = Testbed();
+    test("Doesn't throw a StateError if Timer is left cleaned up", () async {
+      final testbed = Testbed();
 
       testbed.run(() async {
-        final Timer timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) { });
+        final timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) { });
         timer.cancel();
       });
     });

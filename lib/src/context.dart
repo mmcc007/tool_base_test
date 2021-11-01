@@ -35,7 +35,7 @@ typedef ContextInitializer = void Function(AppContext testContext);
 @isTest
 void testUsingContext(
     String description,
-    dynamic testMethod(), {
+    dynamic Function() testMethod, {
       Timeout? timeout,
       Map<Type, Generator>? overrides = const <Type, Generator>{},
       bool initializeFlutterRoot = true,
@@ -78,14 +78,13 @@ void testUsingContext(
           Logger: () => BufferLogger(),
           OperatingSystemUtils: () => FakeOperatingSystemUtils(),
 //          SimControl: () => MockSimControl(),
-          Usage: () => FakeUsage(),
 //          XcodeProjectInterpreter: () => FakeXcodeProjectInterpreter(),
           FileSystem: () => const LocalFileSystemBlockingSetCurrentDirectory(),
           TimeoutConfiguration: () => const TimeoutConfiguration(),
 //          PlistParser: () => FakePlistParser(),
         },
         body: () {
-          final String flutterRoot = getFlutterRoot();
+          final flutterRoot = getFlutterRoot();
           return runZoned<Future<dynamic>>(() {
             try {
               return context.run<dynamic>(
@@ -269,49 +268,6 @@ class FakeOperatingSystemUtils implements OperatingSystemUtils {
 }
 
 //class MockIOSSimulatorUtils extends Mock implements IOSSimulatorUtils {}
-
-class FakeUsage implements Usage {
-  @override
-  bool get isFirstRun => false;
-
-  @override
-  bool get suppressAnalytics => false;
-
-  @override
-  set suppressAnalytics(bool value) {}
-
-  @override
-  bool get enabled => true;
-
-  @override
-  set enabled(bool value) {}
-
-  @override
-  String get clientId => '00000000-0000-4000-0000-000000000000';
-
-  @override
-  void sendCommand(String command, { Map<String, String>? parameters }) {}
-
-  @override
-  void sendEvent(String category, String parameter,
-      { Map<String, String>? parameters,}) {}
-
-  @override
-  void sendTiming(String category, String variableName, Duration duration,
-      { String? label,}) {}
-
-  @override
-  void sendException(dynamic exception) {}
-
-  @override
-  Stream<Map<String, dynamic>> get onSend => throw 'Not implemented';
-
-  @override
-  Future<void> ensureAnalyticsSent() => Future<void>.value();
-
-  @override
-  void printWelcome() {}
-}
 
 //class FakeXcodeProjectInterpreter implements XcodeProjectInterpreter {
 //  @override

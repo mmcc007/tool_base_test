@@ -161,6 +161,7 @@ class MockProcessManager extends Mock implements ProcessManager {
         #mode: mode,
       }));
 
+  @override
   Future<ProcessResult> run(
       List<Object>? command, {
         String? workingDirectory,
@@ -267,12 +268,13 @@ class FakeProcess implements Process {
 class PromptingProcess implements Process {
   Future<void> showPrompt(String prompt, List<String> outputLines) async {
     _stdoutController.add(utf8.encode(prompt));
-    final List<int> bytesOnStdin = await _stdin.future;
+    final bytesOnStdin = await _stdin.future;
     // Echo stdin to stdout.
     _stdoutController.add(bytesOnStdin);
     if (bytesOnStdin[0] == utf8.encode('y')[0]) {
-      for (final String line in outputLines)
+      for (final line in outputLines) {
         _stdoutController.add(utf8.encode('$line\n'));
+      }
     }
     await _stdoutController.close();
   }
@@ -307,8 +309,9 @@ class CompleterIOSink extends MemoryIOSink {
 
   @override
   void add(List<int> data) {
-    if (!_completer.isCompleted)
+    if (!_completer.isCompleted) {
       _completer.complete(data);
+    }
     super.add(data);
   }
 }
@@ -327,7 +330,7 @@ class MemoryIOSink implements IOSink {
 
   @override
   Future<void> addStream(Stream<List<int>> stream) {
-    final Completer<void> completer = Completer<void>();
+    final completer = Completer<void>();
     stream.listen((List<int> data) {
       add(data);
     }).onDone(() => completer.complete());
@@ -351,7 +354,7 @@ class MemoryIOSink implements IOSink {
 
   @override
   void writeAll(Iterable<dynamic> objects, [ String separator = '' ]) {
-    bool addSeparator = false;
+    var addSeparator = false;
     for (dynamic object in objects) {
       if (addSeparator) {
         write(separator);
@@ -380,7 +383,6 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get hasTerminal => _hasTerminal;
   set hasTerminal(bool value) {
-    assert(value != null);
     _hasTerminal = value;
   }
   bool _hasTerminal = true;
@@ -391,7 +393,6 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get supportsAnsiEscapes => _supportsAnsiEscapes;
   set supportsAnsiEscapes(bool value) {
-    assert(value != null);
     _supportsAnsiEscapes = value;
   }
   bool _supportsAnsiEscapes = true;
@@ -539,7 +540,7 @@ class BasicMock {
   final List<String> messages = <String>[];
 
   void expectMessages(List<String> expectedMessages) {
-    final List<String> actualMessages = List<String>.from(messages);
+    final actualMessages = List<String>.from(messages);
     messages.clear();
     expect(actualMessages, unorderedEquals(expectedMessages));
   }
@@ -547,7 +548,7 @@ class BasicMock {
   bool contains(String match) {
     print('Checking for `$match` in:');
     print(messages);
-    final bool result = messages.contains(match);
+    final result = messages.contains(match);
     messages.clear();
     return result;
   }
