@@ -3,10 +3,8 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:file/memory.dart';
-import 'package:test/test.dart';
 import 'package:tool_base/tool_base.dart';
 import 'package:tool_base_test/tool_base_test.dart';
 //import 'package:flutter_tools/src/base/context.dart';
