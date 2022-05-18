@@ -5,7 +5,8 @@
 import 'dart:async';
 import 'dart:io' as io;
 
-//import 'package:tool_base/src/android/android_workflow.dart';
+import 'package:meta/meta.dart';
+import 'package:mockito/mockito.dart';
 import 'package:tool_base/src/base/config.dart';
 import 'package:tool_base/src/base/context.dart';
 import 'package:tool_base/src/base/file_system.dart';
@@ -15,17 +16,8 @@ import 'package:tool_base/src/base/os.dart';
 import 'package:tool_base/src/base/terminal.dart';
 import 'package:tool_base/src/base/time.dart';
 import 'package:tool_base/src/cache.dart';
-//import 'package:tool_base/src/context_runner.dart';
-//import 'package:tool_base/src/device.dart';
-//import 'package:tool_base/src/doctor.dart';
-//import 'package:tool_base/src/ios/plist_parser.dart';
-//import 'package:tool_base/src/ios/simulators.dart';
-//import 'package:tool_base/src/ios/xcodeproj.dart';
-//import 'package:tool_base/src/project.dart';
-import 'package:reporting/reporting.dart';
-//import 'package:tool_base/src/version.dart';
-import 'package:meta/meta.dart';
-import 'package:mockito/mockito.dart';
+import 'package:tool_base/src/flutter.dart';
+import 'package:tool_base_test/src/mocks.dart';
 
 import 'common.dart';
 import 'context_runner.dart';
@@ -33,7 +25,7 @@ import 'context_runner.dart';
 export 'package:tool_base/src/base/context.dart' show Generator;
 
 /// Return the test logger. This assumes that the current Logger is a BufferLogger.
-BufferLogger get testLogger => context.get<Logger>();
+BufferLogger get testLogger => context.get<Logger>()! as BufferLogger;
 
 //FakeDeviceManager get testDeviceManager => context.get<DeviceManager>();
 //FakeDoctor get testDoctor => context.get<Doctor>();
@@ -43,16 +35,16 @@ typedef ContextInitializer = void Function(AppContext testContext);
 @isTest
 void testUsingContext(
     String description,
-    dynamic testMethod(), {
-      Timeout timeout,
-      Map<Type, Generator> overrides = const <Type, Generator>{},
+    dynamic Function() testMethod, {
+      Timeout? timeout,
+      Map<Type, Generator>? overrides = const <Type, Generator>{},
       bool initializeFlutterRoot = true,
-      String testOn,
-      bool skip, // should default to `false`, but https://github.com/dart-lang/test/issues/545 doesn't allow this
+      String? testOn,
+      bool? skip, // should default to `false`, but https://github.com/dart-lang/test/issues/545 doesn't allow this
     }) {
   // Ensure we don't rely on the default [Config] constructor which will
   // leak a sticky $HOME/.flutter_settings behind!
-  Directory configDir;
+  Directory? configDir;
   tearDown(() {
     if (configDir != null) {
       tryToDelete(configDir);
@@ -61,8 +53,8 @@ void testUsingContext(
   });
   Config buildConfig(FileSystem fs) {
     configDir = fs.systemTempDirectory.createTempSync('flutter_config_dir_test.');
-    final File settingsFile = fs.file(
-        fs.path.join(configDir.path, '.flutter_settings')
+    final settingsFile = fs.file(
+        fs.path.join(configDir!.path, '.flutter_settings')
     );
     return Config(settingsFile);
   }
@@ -86,14 +78,13 @@ void testUsingContext(
           Logger: () => BufferLogger(),
           OperatingSystemUtils: () => FakeOperatingSystemUtils(),
 //          SimControl: () => MockSimControl(),
-          Usage: () => FakeUsage(),
 //          XcodeProjectInterpreter: () => FakeXcodeProjectInterpreter(),
           FileSystem: () => const LocalFileSystemBlockingSetCurrentDirectory(),
           TimeoutConfiguration: () => const TimeoutConfiguration(),
 //          PlistParser: () => FakePlistParser(),
         },
         body: () {
-          final String flutterRoot = getFlutterRoot();
+          final flutterRoot = getFlutterRoot();
           return runZoned<Future<dynamic>>(() {
             try {
               return context.run<dynamic>(
@@ -128,11 +119,12 @@ void testUsingContext(
 }
 
 void _printBufferedErrors(AppContext testContext) {
-  if (testContext.get<Logger>() is BufferLogger) {
-    final BufferLogger bufferLogger = testContext.get<Logger>();
-    if (bufferLogger.errorText.isNotEmpty)
-      print(bufferLogger.errorText);
-    bufferLogger.clear();
+  var logger = testContext.get<Logger>();
+  if (logger is BufferLogger) {
+    if (logger.errorText.isNotEmpty) {
+      print(logger.errorText);
+    }
+    logger.clear();
   }
 }
 
@@ -236,31 +228,31 @@ void _printBufferedErrors(AppContext testContext) {
 
 class FakeOperatingSystemUtils implements OperatingSystemUtils {
   @override
-  ProcessResult makeExecutable(File file) => null;
+  ProcessResult makeExecutable(File file) => FakeProcessResult();
 
   @override
-  void chmod(FileSystemEntity entity, String mode) { }
+  void chmod(FileSystemEntity entity, String mode) {}
 
   @override
-  File which(String execName) => null;
+  File which(String execName) => throw 'Not implemented';
 
   @override
   List<File> whichAll(String execName) => <File>[];
 
   @override
-  File makePipe(String path) => null;
+  File makePipe(String path) => throw 'Not implemented';
 
   @override
-  void zip(Directory data, File zipFile) { }
+  void zip(Directory data, File zipFile) {}
 
   @override
-  void unzip(File file, Directory targetDirectory) { }
+  void unzip(File file, Directory targetDirectory) {}
 
   @override
   bool verifyZip(File file) => true;
 
   @override
-  void unpack(File gzippedTarFile, Directory targetDirectory) { }
+  void unpack(File gzippedTarFile, Directory targetDirectory) {}
 
   @override
   bool verifyGzip(File gzippedFile) => true;
@@ -276,47 +268,6 @@ class FakeOperatingSystemUtils implements OperatingSystemUtils {
 }
 
 //class MockIOSSimulatorUtils extends Mock implements IOSSimulatorUtils {}
-
-class FakeUsage implements Usage {
-  @override
-  bool get isFirstRun => false;
-
-  @override
-  bool get suppressAnalytics => false;
-
-  @override
-  set suppressAnalytics(bool value) { }
-
-  @override
-  bool get enabled => true;
-
-  @override
-  set enabled(bool value) { }
-
-  @override
-  String get clientId => '00000000-0000-4000-0000-000000000000';
-
-  @override
-  void sendCommand(String command, { Map<String, String> parameters }) { }
-
-  @override
-  void sendEvent(String category, String parameter, { Map<String, String> parameters }) { }
-
-  @override
-  void sendTiming(String category, String variableName, Duration duration, { String label }) { }
-
-  @override
-  void sendException(dynamic exception) { }
-
-  @override
-  Stream<Map<String, dynamic>> get onSend => null;
-
-  @override
-  Future<void> ensureAnalyticsSent() => Future<void>.value();
-
-  @override
-  void printWelcome() { }
-}
 
 //class FakeXcodeProjectInterpreter implements XcodeProjectInterpreter {
 //  @override

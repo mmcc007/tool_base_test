@@ -6,27 +6,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io show IOSink, ProcessSignal, Stdout, StdoutException;
 
-//import 'package:tool_base/src/android/android_device.dart';
-//import 'package:tool_base/src/android/android_sdk.dart' show AndroidSdk;
-//import 'package:tool_base/src/application_package.dart';
-import 'package:tool_base/src/base/context.dart';
-import 'package:tool_base/src/base/file_system.dart' hide IOSink;
-import 'package:tool_base/src/base/io.dart';
-import 'package:tool_base/src/base/platform.dart';
-//import 'package:tool_base/src/build_info.dart';
-//import 'package:tool_base/src/compile.dart';
-//import 'package:tool_base/src/devfs.dart';
-//import 'package:tool_base/src/device.dart';
-//import 'package:tool_base/src/ios/devices.dart';
-//import 'package:tool_base/src/ios/simulators.dart';
-//import 'package:tool_base/src/project.dart';
-//import 'package:tool_base/src/runner/flutter_command.dart';
 import 'package:mockito/mockito.dart';
 import 'package:process/process.dart';
+import 'package:tool_base/src/base/context.dart';
+import 'package:tool_base/src/base/io.dart';
+import 'package:tool_base/src/base/platform.dart';
 
 import 'common.dart';
 
-final Generator kNoColorTerminalPlatform = () => FakePlatform.fromPlatform(const LocalPlatform())..stdoutSupportsAnsi = false;
+final Generator kNoColorTerminalPlatform = () => FakePlatform.fromPlatform(const LocalPlatform()).copyWith(stdoutSupportsAnsi: false);
 
 //class MockApplicationPackageStore extends ApplicationPackageStore {
 //  MockApplicationPackageStore() : super(
@@ -152,42 +140,76 @@ final Generator kNoColorTerminalPlatform = () => FakePlatform.fromPlatform(const
 /// A strategy for creating Process objects from a list of commands.
 typedef ProcessFactory = Process Function(List<String> command);
 
-/// A ProcessManager that starts Processes by delegating to a ProcessFactory.
 class MockProcessManager extends Mock implements ProcessManager {
-  ProcessFactory processFactory = (List<String> commands) => MockProcess();
-  bool canRunSucceeds = true;
-  bool runSucceeds = true;
-  List<String> commands;
-
-  @override
-  bool canRun(dynamic command, { String workingDirectory }) => canRunSucceeds;
 
   @override
   Future<Process> start(
-      List<dynamic> command, {
-        String workingDirectory,
-        Map<String, String> environment,
-        bool includeParentEnvironment = true,
-        bool runInShell = false,
+      List<Object>? command, {
+        String? workingDirectory,
+        Map<String, String>? environment,
+        bool? includeParentEnvironment,
+        bool? runInShell,
         ProcessStartMode mode = ProcessStartMode.normal,
-      }) {
-    if (!runSucceeds) {
-      final String executable = command[0];
-      final List<String> arguments = command.length > 1 ? command.sublist(1) : <String>[];
-      throw ProcessException(executable, arguments);
-    }
+      }) =>
+      super.noSuchMethod(Invocation.method(#start, [
+        command
+      ], {
+        #workingDirectory: workingDirectory,
+        #environment: environment,
+        #includeParentEnvironment: includeParentEnvironment,
+        #runInShell: runInShell,
+        #mode: mode,
+      }));
 
-    commands = command;
-    return Future<Process>.value(processFactory(command));
-  }
+  @override
+  Future<ProcessResult> run(
+      List<Object>? command, {
+        String? workingDirectory,
+        Map<String, String>? environment,
+        bool? includeParentEnvironment,
+        bool? runInShell,
+        covariant Encoding? stdoutEncoding = systemEncoding,
+        covariant Encoding? stderrEncoding = systemEncoding,
+      }) =>
+      super.noSuchMethod(Invocation.method(#run, [
+        command
+      ], {
+        #workingDirectory: workingDirectory,
+        #environment: environment,
+        #includeParentEnvironment: includeParentEnvironment,
+        #runInShell: runInShell,
+        #stdoutEncoding: stdoutEncoding,
+        #stderrEncoding: stderrEncoding,
+      }));
+
+  @override
+  ProcessResult runSync(
+      List<Object>? command, {
+        String? workingDirectory,
+        Map<String, String>? environment,
+        bool? includeParentEnvironment,
+        bool? runInShell,
+        covariant Encoding? stdoutEncoding = systemEncoding,
+        covariant Encoding? stderrEncoding = systemEncoding,
+      }) =>
+      super.noSuchMethod(Invocation.method(#runSync, [
+        command
+      ], {
+        #workingDirectory: workingDirectory,
+        #environment: environment,
+        #includeParentEnvironment: includeParentEnvironment,
+        #runInShell: runInShell,
+        #stdoutEncoding: stdoutEncoding,
+        #stderrEncoding: stderrEncoding,
+      }));
 }
 
 /// A process that exits successfully with no output and ignores all input.
 class MockProcess extends Mock implements Process {
   MockProcess({
     this.pid = 1,
-    Future<int> exitCode,
-    Stream<List<int>> stdin,
+    Future<int>? exitCode,
+    io.IOSink? stdin,
     this.stdout = const Stream<List<int>>.empty(),
     this.stderr = const Stream<List<int>>.empty(),
   }) : exitCode = exitCode ?? Future<int>.value(0),
@@ -213,8 +235,8 @@ class MockProcess extends Mock implements Process {
 class FakeProcess implements Process {
   FakeProcess({
     this.pid = 1,
-    Future<int> exitCode,
-    Stream<List<int>> stdin,
+    Future<int>? exitCode,
+    io.IOSink? stdin,
     this.stdout = const Stream<List<int>>.empty(),
     this.stderr = const Stream<List<int>>.empty(),
   }) : exitCode = exitCode ?? Future<int>.value(0),
@@ -246,12 +268,13 @@ class FakeProcess implements Process {
 class PromptingProcess implements Process {
   Future<void> showPrompt(String prompt, List<String> outputLines) async {
     _stdoutController.add(utf8.encode(prompt));
-    final List<int> bytesOnStdin = await _stdin.future;
+    final bytesOnStdin = await _stdin.future;
     // Echo stdin to stdout.
     _stdoutController.add(bytesOnStdin);
     if (bytesOnStdin[0] == utf8.encode('y')[0]) {
-      for (final String line in outputLines)
+      for (final line in outputLines) {
         _stdoutController.add(utf8.encode('$line\n'));
+      }
     }
     await _stdoutController.close();
   }
@@ -286,8 +309,9 @@ class CompleterIOSink extends MemoryIOSink {
 
   @override
   void add(List<int> data) {
-    if (!_completer.isCompleted)
+    if (!_completer.isCompleted) {
       _completer.complete(data);
+    }
     super.add(data);
   }
 }
@@ -306,7 +330,7 @@ class MemoryIOSink implements IOSink {
 
   @override
   Future<void> addStream(Stream<List<int>> stream) {
-    final Completer<void> completer = Completer<void>();
+    final completer = Completer<void>();
     stream.listen((List<int> data) {
       add(data);
     }).onDone(() => completer.complete());
@@ -319,18 +343,18 @@ class MemoryIOSink implements IOSink {
   }
 
   @override
-  void write(Object obj) {
+  void write(Object? obj) {
     add(encoding.encode('$obj'));
   }
 
   @override
-  void writeln([ Object obj = '' ]) {
+  void writeln([Object? obj = '']) {
     add(encoding.encode('$obj\n'));
   }
 
   @override
   void writeAll(Iterable<dynamic> objects, [ String separator = '' ]) {
-    bool addSeparator = false;
+    var addSeparator = false;
     for (dynamic object in objects) {
       if (addSeparator) {
         write(separator);
@@ -341,7 +365,7 @@ class MemoryIOSink implements IOSink {
   }
 
   @override
-  void addError(dynamic error, [ StackTrace stackTrace ]) {
+  void addError(dynamic error, [StackTrace? stackTrace]) {
     throw UnimplementedError();
   }
 
@@ -359,7 +383,6 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get hasTerminal => _hasTerminal;
   set hasTerminal(bool value) {
-    assert(value != null);
     _hasTerminal = value;
   }
   bool _hasTerminal = true;
@@ -370,28 +393,29 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get supportsAnsiEscapes => _supportsAnsiEscapes;
   set supportsAnsiEscapes(bool value) {
-    assert(value != null);
     _supportsAnsiEscapes = value;
   }
   bool _supportsAnsiEscapes = true;
 
   @override
   int get terminalColumns {
-    if (_terminalColumns != null)
-      return _terminalColumns;
+    if (_terminalColumns != null) {
+      return _terminalColumns!;
+    }
     throw const io.StdoutException('unspecified mock value');
   }
   set terminalColumns(int value) => _terminalColumns = value;
-  int _terminalColumns;
+  int? _terminalColumns;
 
   @override
   int get terminalLines {
-    if (_terminalLines != null)
-      return _terminalLines;
+    if (_terminalLines != null) {
+      return _terminalLines!;
+    }
     throw const io.StdoutException('unspecified mock value');
   }
   set terminalLines(int value) => _terminalLines = value;
-  int _terminalLines;
+  int? _terminalLines;
 }
 
 /// A Stdio that collects stdout and supports simulated stdin.
@@ -516,7 +540,7 @@ class BasicMock {
   final List<String> messages = <String>[];
 
   void expectMessages(List<String> expectedMessages) {
-    final List<String> actualMessages = List<String>.from(messages);
+    final actualMessages = List<String>.from(messages);
     messages.clear();
     expect(actualMessages, unorderedEquals(expectedMessages));
   }
@@ -524,7 +548,7 @@ class BasicMock {
   bool contains(String match) {
     print('Checking for `$match` in:');
     print(messages);
-    final bool result = messages.contains(match);
+    final result = messages.contains(match);
     messages.clear();
     return result;
   }
@@ -616,18 +640,18 @@ class MockStdIn extends Mock implements IOSink {
   final StringBuffer stdInWrites = StringBuffer();
 
   String getAndClear() {
-    final String result = stdInWrites.toString();
+    final result = stdInWrites.toString();
     stdInWrites.clear();
     return result;
   }
 
   @override
-  void write([ Object o = '' ]) {
+  void write([Object? o]) {
     stdInWrites.write(o);
   }
 
   @override
-  void writeln([ Object o = '' ]) {
+  void writeln([Object? o]) {
     stdInWrites.writeln(o);
   }
 }

@@ -52,13 +52,11 @@ import 'dart:async';
 //import 'windows/visual_studio_validator.dart';
 //import 'windows/windows_workflow.dart';
 
-import 'package:process/process.dart';
-import 'package:reporting/reporting.dart';
 import 'package:tool_base/tool_base.dart';
 
 Future<T> runInContext<T>(
-    FutureOr<T> runner(), {
-      Map<Type, Generator> overrides,
+    FutureOr<T> Function() runner, {
+      Map<Type, Generator>? overrides,
     }) async {
   return await context.run<T>(
     name: 'global fallbacks',

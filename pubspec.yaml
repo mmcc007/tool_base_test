@@ -5,17 +5,18 @@ description: A starting point for Dart libraries or applications.
 # author: Maurice McCabe <mmcc007@gmail.com>
 
 environment:
-  sdk: '>=2.4.0 <3.0.0'
+  sdk: '>=2.12.0 <3.0.0'
 
 dependencies:
-  tool_base: ^1.9.5+3
+  tool_base: ^2.0.0
 #  tool_base:
 #    path: ../tool_base
-  reporting:
-    git: https://github.com/mmcc007/reporting.git
-#    path: ../reporting
 
 dev_dependencies:
   pedantic: ^1.7.0
-  test: ^1.6.0
-  mockito: ^4.1.0
+  test: ^1.19.2
+  mockito: ^5.0.16
+
+dependency_overrides:
+  tool_base:
+    path: ../tool_base
